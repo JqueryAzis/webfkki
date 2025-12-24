@@ -1,9 +1,26 @@
+<?php
+session_start();
+if (!isset($_SESSION['user_id'])) {
+  header("Location: index.html");
+  exit;
+}
+?>
+
+<script>
+  window.currentUser = {
+    id_login: <?= json_encode($_SESSION['user_id']) ?>,
+    email: <?= json_encode($_SESSION['email']) ?>,
+    role: <?= json_encode($_SESSION['role']) ?>,
+    koordinator: <?= json_encode($_SESSION['koordinator']) ?>
+  };
+</script>
+
 <!doctype html>
 <html lang="id" class="h-full">
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FKKI Dashboard - Versi 3</title>
+  <title>FKKI Dashboard - Versi 8 (PHP Ready)</title>
   <script src="/_sdk/element_sdk.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
@@ -345,9 +362,30 @@
         font-size: 16px;
       }
     }
+
+    /* PHP Ready Alert Box */
+    .php-ready-box {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+      animation: scaleIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .php-info-card {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: white;
+      padding: 1.5rem;
+      border-radius: 16px;
+      margin-top: 1.5rem;
+      box-shadow: 0 8px 24px rgba(245, 158, 11, 0.3);
+    }
   </style>
   <style>@view-transition { navigation: auto; }</style>
   <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+
  </head>
  <body class="h-full w-full bg-gray-50">
   <div id="app" class="h-full w-full"></div>
@@ -362,28 +400,50 @@
       welcome_message: "Selamat datang di sistem manajemen FKKI"
     };
 
+    // Simulasi data login dari database
+    let loginData = [
+      { id_login: 1, email: "admin@fkki.com", password: "admin123", role: "admin", koordinator: null },
+      { id_login: 2, email: "koordinator1@fkki.com", password: "koord123", role: "koordinator", koordinator: "Jakarta Pusat" },
+      { id_login: 3, email: "koordinator2@fkki.com", password: "koord123", role: "koordinator", koordinator: "Jakarta Selatan" },
+      { id_login: 4, email: "pengurus1@fkki.com", password: "pengurus123", role: "pengurus", koordinator: null },
+      { id_login: 5, email: "pengurus2@fkki.com", password: "pengurus123", role: "pengurus", koordinator: null }
+    ];
+
+    // Simulasi data anggota FKKI dari database
+    let dataFKKI = [
+      { id: 1, nama: "Dr. Ahmad Fauzi", npa: "12345", instansi: "RS Jakarta", koordinator: "Jakarta Pusat", status: "Aktif" },
+      { id: 2, nama: "Dr. Siti Nurhaliza", npa: "12346", instansi: "Klinik Sehat", koordinator: "Jakarta Pusat", status: "Aktif" },
+      { id: 3, nama: "Dr. Budi Santoso", npa: "12347", instansi: "RS Harapan", koordinator: "Jakarta Selatan", status: "Aktif" },
+      { id: 4, nama: "Dr. Rina Kartika", npa: "12348", instansi: "Puskesmas 1", koordinator: "Jakarta Selatan", status: "Aktif" },
+      { id: 5, nama: "Dr. Eko Prasetyo", npa: "12349", instansi: "RS Mitra", koordinator: "Jakarta Pusat", status: "Non-Aktif" }
+    ];
+
+    // State aplikasi
+    let currentUser = null;
+    let currentPage = 'dashboard';
+
     /* ========================================
        CEK LOGIN STATUS (AUTO LOGIN)
        ======================================== */
 
-    function checkLoginStatus() {
-      // Auto login sebagai admin jika tidak ada user
-      const userData = localStorage.getItem('fkki_user');
-      if (userData) {
-        currentUser = JSON.parse(userData);
-      } else {
-        // Set default user sebagai admin
-        currentUser = {
-          id_login: 1,
-          email: "admin@fkki.com",
-          role: "admin",
-          koordinator: null
-        };
-        // Simpan ke localStorage
-        localStorage.setItem('fkki_user', JSON.stringify(currentUser));
-      }
-      return true;
-    }
+        function checkLoginStatus() {
+        // pastikan data user dari PHP ada
+        if (typeof window.currentUser === 'undefined') {
+            alert('Session tidak ditemukan. Silakan login ulang.');
+            window.location.href = 'index.html';
+            return false;
+        }
+
+        // validasi data minimal
+        if (!currentUser.email || !currentUser.role) {
+            alert('Session tidak valid. Silakan login ulang.');
+            window.location.href = 'index.html';
+            return false;
+        }
+
+        // ✅ login valid
+        return true;
+        }
 
     /* ========================================
        FUNGSI UTILITY
@@ -426,6 +486,223 @@
     function filterByKoordinator(data, userKoordinator) {
       if (!userKoordinator) return data;
       return data.filter(item => item.koordinator === userKoordinator);
+    }
+
+    function showPHPInstructions() {
+      const modal = `
+        <div id="phpModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop" onclick="closePHPModal(event)">
+          <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full p-8 page-transition max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-start mb-6">
+              <div>
+                <h2 class="text-3xl font-bold text-gray-900 mb-2">📘 Panduan Konversi ke PHP</h2>
+                <p class="text-gray-600">Langkah-langkah mengubah dashboard ini menjadi aplikasi PHP</p>
+              </div>
+              <button onclick="closePHPModal()" class="text-gray-400 hover:text-gray-600 text-2xl">✕</button>
+            </div>
+
+            <div class="space-y-6">
+              <!-- Step 1 -->
+              <div class="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-xl border-l-4 border-indigo-500">
+                <h3 class="text-xl font-bold text-gray-900 mb-3">1️⃣ Simpan File HTML sebagai PHP</h3>
+                <p class="text-gray-700 mb-3">Ubah ekstensi file dari <code class="bg-white px-2 py-1 rounded text-indigo-600">.html</code> menjadi <code class="bg-white px-2 py-1 rounded text-indigo-600">.php</code></p>
+                <div class="bg-white p-3 rounded-lg">
+                  <code class="text-sm text-gray-800">dashboard.html → dashboard.php</code>
+                </div>
+              </div>
+
+              <!-- Step 2 -->
+              <div class="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border-l-4 border-green-500">
+                <h3 class="text-xl font-bold text-gray-900 mb-3">2️⃣ Tambahkan Koneksi Database</h3>
+                <p class="text-gray-700 mb-3">Di bagian atas file PHP, tambahkan koneksi database MySQL:</p>
+                <div class="bg-gray-900 p-4 rounded-lg overflow-x-auto">
+                  <pre class="text-green-400 text-sm"><code>&lt;?php
+session_start();
+
+// Konfigurasi database
+$host = 'localhost';
+$dbname = 'fkki_db';
+$username = 'root';
+$password = '';
+
+// Koneksi ke database
+try {
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch(PDOException $e) {
+    die("Koneksi gagal: " . $e->getMessage());
+}
+?&gt;</code></pre>
+                </div>
+              </div>
+
+              <!-- Step 3 -->
+              <div class="bg-gradient-to-r from-yellow-50 to-orange-50 p-6 rounded-xl border-l-4 border-yellow-500">
+                <h3 class="text-xl font-bold text-gray-900 mb-3">3️⃣ Buat Tabel Database</h3>
+                <p class="text-gray-700 mb-3">Jalankan SQL berikut di phpMyAdmin atau MySQL client:</p>
+                <div class="bg-gray-900 p-4 rounded-lg overflow-x-auto">
+                  <pre class="text-yellow-400 text-sm"><code>CREATE TABLE login_data (
+    id_login INT PRIMARY KEY AUTO_INCREMENT,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    role ENUM('admin', 'koordinator', 'pengurus') NOT NULL,
+    koordinator VARCHAR(100)
+);
+
+CREATE TABLE data_fkki (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    nama VARCHAR(255) NOT NULL,
+    npa VARCHAR(50) NOT NULL,
+    instansi VARCHAR(255) NOT NULL,
+    koordinator VARCHAR(100) NOT NULL,
+    status ENUM('Aktif', 'Non-Aktif') NOT NULL
+);</code></pre>
+                </div>
+              </div>
+
+              <!-- Step 4 -->
+              <div class="bg-gradient-to-r from-blue-50 to-cyan-50 p-6 rounded-xl border-l-4 border-blue-500">
+                <h3 class="text-xl font-bold text-gray-900 mb-3">4️⃣ Ganti Data JavaScript dengan PHP</h3>
+                <p class="text-gray-700 mb-3">Hapus array JavaScript dan ganti dengan query PHP:</p>
+                <div class="bg-gray-900 p-4 rounded-lg overflow-x-auto">
+                  <pre class="text-blue-400 text-sm"><code>&lt;?php
+// Ambil data login dari database
+$stmt = $pdo->query("SELECT * FROM login_data");
+$loginData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Ambil data anggota FKKI
+$stmt = $pdo->query("SELECT * FROM data_fkki");
+$dataFKKI = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Convert ke JSON untuk JavaScript
+$loginDataJSON = json_encode($loginData);
+$dataFKKIJSON = json_encode($dataFKKI);
+?&gt;
+
+&lt;script&gt;
+let loginData = &lt;?php echo $loginDataJSON; ?&gt;;
+let dataFKKI = &lt;?php echo $dataFKKIJSON; ?&gt;;
+&lt;/script&gt;</code></pre>
+                </div>
+              </div>
+
+              <!-- Step 5 -->
+              <div class="bg-gradient-to-r from-red-50 to-pink-50 p-6 rounded-xl border-l-4 border-red-500">
+                <h3 class="text-xl font-bold text-gray-900 mb-3">5️⃣ Buat File API untuk CRUD</h3>
+                <p class="text-gray-700 mb-3">Buat file <code class="bg-white px-2 py-1 rounded text-red-600">api.php</code> untuk handle Create, Read, Update, Delete:</p>
+                <div class="bg-gray-900 p-4 rounded-lg overflow-x-auto">
+                  <pre class="text-red-400 text-sm"><code>&lt;?php
+// api.php
+require_once 'config.php';
+
+$action = $_POST['action'] ?? $_GET['action'] ?? '';
+
+switch($action) {
+    case 'create_anggota':
+        $stmt = $pdo->prepare("INSERT INTO data_fkki (nama, npa, instansi, koordinator, status) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$_POST['nama'], $_POST['npa'], $_POST['instansi'], $_POST['koordinator'], $_POST['status']]);
+        echo json_encode(['success' => true]);
+        break;
+    
+    case 'update_anggota':
+        $stmt = $pdo->prepare("UPDATE data_fkki SET nama=?, npa=?, instansi=?, koordinator=?, status=? WHERE id=?");
+        $stmt->execute([$_POST['nama'], $_POST['npa'], $_POST['instansi'], $_POST['koordinator'], $_POST['status'], $_POST['id']]);
+        echo json_encode(['success' => true]);
+        break;
+    
+    case 'delete_anggota':
+        $stmt = $pdo->prepare("DELETE FROM data_fkki WHERE id=?");
+        $stmt->execute([$_POST['id']]);
+        echo json_encode(['success' => true]);
+        break;
+}
+?&gt;</code></pre>
+                </div>
+              </div>
+
+              <!-- Step 6 -->
+              <div class="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl border-l-4 border-purple-500">
+                <h3 class="text-xl font-bold text-gray-900 mb-3">6️⃣ Update JavaScript untuk AJAX</h3>
+                <p class="text-gray-700 mb-3">Ubah fungsi JavaScript agar menggunakan fetch ke API PHP:</p>
+                <div class="bg-gray-900 p-4 rounded-lg overflow-x-auto">
+                  <pre class="text-purple-400 text-sm"><code>function handleSubmit(event, type, action, id) {
+    event.preventDefault();
+    
+    const formData = new FormData(document.getElementById('crudForm'));
+    formData.append('action', action + '_' + type);
+    if (id) formData.append('id', id);
+    
+    fetch('api.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Data berhasil disimpan!');
+            closeModal();
+            location.reload(); // Reload untuk update data
+        }
+    });
+}</code></pre>
+                </div>
+              </div>
+
+              <!-- Tips -->
+              <div class="bg-gradient-to-r from-gray-100 to-gray-200 p-6 rounded-xl border-l-4 border-gray-500">
+                <h3 class="text-xl font-bold text-gray-900 mb-3">💡 Tips Penting</h3>
+                <ul class="space-y-2 text-gray-700">
+                  <li class="flex items-start">
+                    <span class="text-green-500 mr-2 text-xl">✓</span>
+                    <span>Gunakan prepared statements untuk mencegah SQL injection</span>
+                  </li>
+                  <li class="flex items-start">
+                    <span class="text-green-500 mr-2 text-xl">✓</span>
+                    <span>Hash password dengan <code class="bg-white px-2 py-1 rounded">password_hash()</code></span>
+                  </li>
+                  <li class="flex items-start">
+                    <span class="text-green-500 mr-2 text-xl">✓</span>
+                    <span>Tambahkan validasi input di sisi server</span>
+                  </li>
+                  <li class="flex items-start">
+                    <span class="text-green-500 mr-2 text-xl">✓</span>
+                    <span>Implementasikan sistem login dan session yang proper</span>
+                  </li>
+                  <li class="flex items-start">
+                    <span class="text-green-500 mr-2 text-xl">✓</span>
+                    <span>Gunakan HTTPS untuk keamanan data</span>
+                  </li>
+                </ul>
+              </div>
+
+              <!-- Action Button -->
+              <div class="flex gap-3">
+                <button 
+                  onclick="closePHPModal()"
+                  class="flex-1 btn-modern px-6 py-3 gradient-primary text-white rounded-xl font-semibold"
+                >
+                  Mengerti 👍
+                </button>
+                <button 
+                  onclick="window.open('https://www.php.net/manual/en/pdo.prepared-statements.php', '_blank')"
+                  class="flex-1 btn-modern px-6 py-3 bg-gray-700 text-white rounded-xl font-semibold"
+                >
+                  📚 Dokumentasi PHP
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.body.insertAdjacentHTML('beforeend', modal);
+    }
+
+    function closePHPModal(event) {
+      const modal = document.getElementById('phpModal');
+      if (modal && (!event || event.target.id === 'phpModal')) {
+        modal.style.opacity = '0';
+        setTimeout(() => modal.remove(), 300);
+      }
     }
 
     /* ========================================
@@ -491,7 +768,7 @@
               onclick="handleLogout()"
               class="w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition font-medium"
             >
-              <span class="text-xl">���</span>
+              <span class="text-xl">🚪</span>
               <span class="text-sm">Keluar</span>
             </button>
           </div>
@@ -517,6 +794,13 @@
           </div>
           
           <div class="flex items-center space-x-3 md:space-x-4">
+            <button
+              onclick="showPHPInstructions()"
+              class="btn-modern px-4 py-2 gradient-success text-white rounded-lg transition font-semibold text-xs md:text-sm flex items-center gap-2"
+            >
+              <span>🔧</span>
+              <span class="hidden sm:inline">Panduan PHP</span>
+            </button>
             <div class="hidden md:block text-right">
               <p class="font-semibold text-gray-900 text-sm">${currentUser.email}</p>
               <p class="text-xs text-indigo-600 font-medium">${currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1)}</p>
@@ -556,6 +840,33 @@
 
       return `
         <div class="p-4 md:p-8 page-transition pb-24 md:pb-8">
+          <!-- PHP Ready Notification -->
+          <div class="php-ready-box">
+            <div class="flex items-start space-x-4">
+              <div class="text-4xl">✅</div>
+              <div class="flex-1">
+                <h3 class="text-xl font-bold mb-2">Dashboard Siap Dikonversi ke PHP! 🚀</h3>
+                <p class="text-green-50 mb-3">Dashboard ini sudah dirancang dengan struktur yang mudah dikonversi ke PHP. Klik tombol "Panduan PHP" di header untuk melihat langkah-langkah lengkapnya.</p>
+                <div class="flex flex-wrap gap-3">
+                  <button 
+                    onclick="showPHPInstructions()"
+                    class="btn-modern px-5 py-2.5 bg-white text-green-700 rounded-xl transition font-semibold text-sm flex items-center gap-2"
+                  >
+                    <span>📘</span> Lihat Panduan
+                  </button>
+                  <a 
+                    href="https://www.php.net/manual/en/pdo.prepared-statements.php"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="btn-modern px-5 py-2.5 bg-green-800 text-white rounded-xl transition font-semibold text-sm flex items-center gap-2"
+                  >
+                    <span>📚</span> Dokumentasi PHP
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Stats Cards -->
           <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
             <div class="stat-card card-hover bg-white rounded-xl md:rounded-2xl shadow-md p-4 md:p-6 border-l-4 border-indigo-500">
@@ -611,8 +922,44 @@
             </div>
           </div>
 
+          <!-- PHP Info Card -->
+          <div class="php-info-card">
+            <div class="flex items-start space-x-4">
+              <div class="text-4xl">⚡</div>
+              <div class="flex-1">
+                <h3 class="text-2xl font-bold mb-3">Fitur PHP yang Bisa Ditambahkan</h3>
+                <div class="grid md:grid-cols-2 gap-4">
+                  <div class="bg-white bg-opacity-20 backdrop-blur-sm p-4 rounded-xl">
+                    <h4 class="font-bold mb-2 flex items-center gap-2">
+                      <span>🔐</span> Sistem Login & Session
+                    </h4>
+                    <p class="text-sm text-yellow-50">Implementasi login dengan session PHP dan hash password</p>
+                  </div>
+                  <div class="bg-white bg-opacity-20 backdrop-blur-sm p-4 rounded-xl">
+                    <h4 class="font-bold mb-2 flex items-center gap-2">
+                      <span>💾</span> Database MySQL
+                    </h4>
+                    <p class="text-sm text-yellow-50">Simpan data ke database dengan PDO atau MySQLi</p>
+                  </div>
+                  <div class="bg-white bg-opacity-20 backdrop-blur-sm p-4 rounded-xl">
+                    <h4 class="font-bold mb-2 flex items-center gap-2">
+                      <span>🛡️</span> Security & Validation
+                    </h4>
+                    <p class="text-sm text-yellow-50">Prepared statements, CSRF protection, input sanitization</p>
+                  </div>
+                  <div class="bg-white bg-opacity-20 backdrop-blur-sm p-4 rounded-xl">
+                    <h4 class="font-bold mb-2 flex items-center gap-2">
+                      <span>📊</span> Export & Report
+                    </h4>
+                    <p class="text-sm text-yellow-50">Generate PDF, Excel report dengan PHPExcel/TCPDF</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Recent Activity -->
-          <div class="card-hover bg-white rounded-xl md:rounded-2xl shadow-md p-5 md:p-8">
+          <div class="card-hover bg-white rounded-xl md:rounded-2xl shadow-md p-5 md:p-8 mt-6">
             <div class="flex items-center justify-between mb-4 md:mb-6">
               <h2 class="text-xl md:text-2xl font-bold text-gray-900">Aktivitas Terbaru</h2>
               <span class="px-3 md:px-4 py-1.5 md:py-2 bg-indigo-50 text-indigo-600 rounded-full text-xs md:text-sm font-semibold">Live</span>
@@ -663,26 +1010,26 @@
       const koordinatorData = loginData.filter(u => u.role === 'koordinator');
       
       return `
-        <div class="p-8 page-transition">
-          <div class="card-hover bg-white rounded-2xl shadow-md p-8">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div class="p-4 md:p-8 page-transition pb-24 md:pb-8">
+          <div class="card-hover bg-white rounded-xl md:rounded-2xl shadow-md p-4 md:p-8">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 md:mb-8">
               <div>
-                <h2 class="text-3xl font-bold text-gray-900">Data Koordinator</h2>
+                <h2 class="text-2xl md:text-3xl font-bold text-gray-900">Data Koordinator</h2>
                 <p class="text-gray-500 mt-1">Kelola data koordinator FKKI</p>
               </div>
               <div class="flex flex-wrap gap-3">
                 <button 
                   onclick="exportToExcel(${JSON.stringify(koordinatorData).replace(/"/g, '&quot;')}, 'data-koordinator')"
-                  class="btn-modern px-5 py-2.5 gradient-success text-white rounded-xl transition font-semibold text-sm flex items-center gap-2"
+                  class="btn-modern px-4 md:px-5 py-2 md:py-2.5 gradient-success text-white rounded-xl transition font-semibold text-sm flex items-center gap-2"
                 >
-                  <span>📥</span> Export Excel
+                  <span>📥</span> <span class="hidden sm:inline">Export Excel</span>
                 </button>
                 ${canEdit ? `
                   <button 
                     onclick="openModal('koordinator', 'add')"
-                    class="btn-modern px-5 py-2.5 gradient-primary text-white rounded-xl transition font-semibold text-sm flex items-center gap-2"
+                    class="btn-modern px-4 md:px-5 py-2 md:py-2.5 gradient-primary text-white rounded-xl transition font-semibold text-sm flex items-center gap-2"
                   >
-                    <span>➕</span> Tambah Data
+                    <span>➕</span> <span class="hidden sm:inline">Tambah Data</span>
                   </button>
                 ` : ''}
               </div>
@@ -694,12 +1041,12 @@
                 id="searchKoordinator"
                 oninput="searchTable('koordinator')"
                 placeholder="🔍 Cari koordinator..."
-                class="input-modern flex-1 px-5 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                class="input-modern flex-1 px-4 md:px-5 py-2 md:py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
               />
               <select 
                 id="perPageKoordinator"
                 onchange="changePerPage('koordinator')"
-                class="input-modern px-5 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                class="input-modern px-4 md:px-5 py-2 md:py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
               >
                 <option value="5">5 per halaman</option>
                 <option value="10" selected>10 per halaman</option>
@@ -712,11 +1059,11 @@
               <table class="modern-table w-full min-w-full">
                 <thead>
                   <tr>
-                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">ID</th>
-                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Email</th>
-                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Wilayah</th>
-                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Role</th>
-                    ${canEdit ? '<th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Aksi</th>' : ''}
+                    <th class="px-4 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">ID</th>
+                    <th class="px-4 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Email</th>
+                    <th class="px-4 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Wilayah</th>
+                    <th class="px-4 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Role</th>
+                    ${canEdit ? '<th class="px-4 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Aksi</th>' : ''}
                   </tr>
                 </thead>
                 <tbody id="koordinatorTableBody" class="bg-white divide-y divide-gray-100">
@@ -725,7 +1072,7 @@
               </table>
             </div>
 
-            <div id="koordinatorPagination" class="mt-8 flex justify-center">
+            <div id="koordinatorPagination" class="mt-6 md:mt-8 flex justify-center">
               ${renderPagination('koordinator', koordinatorData.length)}
             </div>
           </div>
@@ -750,28 +1097,28 @@
 
       return paginatedData.map(item => `
         <tr class="hover:bg-gray-50 transition">
-          <td class="px-6 py-4 text-sm font-medium text-gray-900">${item.id_login}</td>
-          <td class="px-6 py-4 text-sm text-gray-900">${item.email}</td>
-          <td class="px-6 py-4 text-sm text-gray-900">${item.koordinator || '-'}</td>
-          <td class="px-6 py-4">
+          <td class="px-4 md:px-6 py-3 md:py-4 text-sm font-medium text-gray-900">${item.id_login}</td>
+          <td class="px-4 md:px-6 py-3 md:py-4 text-sm text-gray-900">${item.email}</td>
+          <td class="px-4 md:px-6 py-3 md:py-4 text-sm text-gray-900">${item.koordinator || '-'}</td>
+          <td class="px-4 md:px-6 py-3 md:py-4">
             <span class="badge-modern bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700">
               ${item.role}
             </span>
           </td>
           ${canEdit ? `
-            <td class="px-6 py-4 text-sm">
+            <td class="px-4 md:px-6 py-3 md:py-4 text-sm">
               <div class="flex gap-2">
                 <button 
                   onclick="openModal('koordinator', 'edit', ${item.id_login})"
-                  class="btn-modern px-4 py-2 gradient-warning text-white rounded-lg transition text-xs font-semibold"
+                  class="btn-modern px-3 md:px-4 py-1.5 md:py-2 gradient-warning text-white rounded-lg transition text-xs font-semibold"
                 >
-                  ✏️ Edit
+                  ✏️ <span class="hidden sm:inline">Edit</span>
                 </button>
                 <button 
                   onclick="deleteData('koordinator', ${item.id_login})"
-                  class="btn-modern px-4 py-2 gradient-danger text-white rounded-lg transition text-xs font-semibold"
+                  class="btn-modern px-3 md:px-4 py-1.5 md:py-2 gradient-danger text-white rounded-lg transition text-xs font-semibold"
                 >
-                  🗑️ Hapus
+                  🗑️ <span class="hidden sm:inline">Hapus</span>
                 </button>
               </div>
             </td>
@@ -793,26 +1140,26 @@
       }
       
       return `
-        <div class="p-6 page-transition pb-24 md:pb-8">
-          <div class="bg-white rounded-xl shadow-md p-6">
+        <div class="p-4 md:p-6 page-transition pb-24 md:pb-8">
+          <div class="bg-white rounded-xl shadow-md p-4 md:p-6">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
               <div>
-                <h2 class="text-2xl font-bold text-gray-800">Data Anggota FKKI</h2>
-                <p class="text-gray-600">Kelola data anggota FKKI</p>
+                <h2 class="text-xl md:text-2xl font-bold text-gray-800">Data Anggota FKKI</h2>
+                <p class="text-gray-600 text-sm md:text-base">Kelola data anggota FKKI</p>
               </div>
               <div class="flex flex-wrap gap-3">
                 <button 
                   onclick="exportToExcel(${JSON.stringify(anggotaData).replace(/"/g, '&quot;')}, 'data-anggota-fkki')"
-                  class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition font-medium"
+                  class="px-3 md:px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition font-medium text-sm"
                 >
-                  📥 Export Excel
+                  📥 <span class="hidden sm:inline">Export</span>
                 </button>
                 ${canEdit ? `
                   <button 
                     onclick="openModal('anggota', 'add')"
-                    class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium"
+                    class="px-3 md:px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium text-sm"
                   >
-                    ➕ Tambah Data
+                    ➕ <span class="hidden sm:inline">Tambah</span>
                   </button>
                 ` : ''}
               </div>
@@ -842,13 +1189,13 @@
               <table class="w-full min-w-full">
                 <thead class="bg-gray-50">
                   <tr>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">ID</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Nama</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">NPA</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Instansi</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Koordinator</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
-                    ${canEdit ? '<th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Aksi</th>' : ''}
+                    <th class="px-3 md:px-4 py-2 md:py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">ID</th>
+                    <th class="px-3 md:px-4 py-2 md:py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Nama</th>
+                    <th class="px-3 md:px-4 py-2 md:py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">NPA</th>
+                    <th class="px-3 md:px-4 py-2 md:py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Instansi</th>
+                    <th class="px-3 md:px-4 py-2 md:py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Koordinator</th>
+                    <th class="px-3 md:px-4 py-2 md:py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                    ${canEdit ? '<th class="px-3 md:px-4 py-2 md:py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Aksi</th>' : ''}
                   </tr>
                 </thead>
                 <tbody id="anggotaTableBody" class="bg-white divide-y divide-gray-200">
@@ -882,30 +1229,30 @@
 
       return paginatedData.map(item => `
         <tr class="hover:bg-gray-50 transition">
-          <td class="px-4 py-3 text-sm text-gray-800">${item.id}</td>
-          <td class="px-4 py-3 text-sm text-gray-800 font-medium">${item.nama}</td>
-          <td class="px-4 py-3 text-sm text-gray-800">${item.npa}</td>
-          <td class="px-4 py-3 text-sm text-gray-800">${item.instansi}</td>
-          <td class="px-4 py-3 text-sm text-gray-800">${item.koordinator}</td>
-          <td class="px-4 py-3">
-            <span class="px-3 py-1 text-xs font-semibold rounded-full ${item.status === 'Aktif' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+          <td class="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-800">${item.id}</td>
+          <td class="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-800 font-medium">${item.nama}</td>
+          <td class="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-800">${item.npa}</td>
+          <td class="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-800">${item.instansi}</td>
+          <td class="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-800">${item.koordinator}</td>
+          <td class="px-3 md:px-4 py-2 md:py-3">
+            <span class="px-2 md:px-3 py-1 text-xs font-semibold rounded-full ${item.status === 'Aktif' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
               ${item.status}
             </span>
           </td>
           ${canEdit ? `
-            <td class="px-4 py-3 text-sm">
+            <td class="px-3 md:px-4 py-2 md:py-3 text-sm">
               <div class="flex gap-2">
                 <button 
                   onclick="openModal('anggota', 'edit', ${item.id})"
-                  class="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition"
+                  class="px-2 md:px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition text-xs"
                 >
-                  ✏️ Edit
+                  ✏️
                 </button>
                 <button 
                   onclick="deleteData('anggota', ${item.id})"
-                  class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition"
+                  class="px-2 md:px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition text-xs"
                 >
-                  🗑️ Hapus
+                  🗑️
                 </button>
               </div>
             </td>
@@ -923,26 +1270,26 @@
       const pengurusData = loginData.filter(u => u.role === 'pengurus');
       
       return `
-        <div class="p-6 page-transition pb-24 md:pb-8">
-          <div class="bg-white rounded-xl shadow-md p-6">
+        <div class="p-4 md:p-6 page-transition pb-24 md:pb-8">
+          <div class="bg-white rounded-xl shadow-md p-4 md:p-6">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
               <div>
-                <h2 class="text-2xl font-bold text-gray-800">Data Pengurus</h2>
-                <p class="text-gray-600">Kelola data pengurus FKKI</p>
+                <h2 class="text-xl md:text-2xl font-bold text-gray-800">Data Pengurus</h2>
+                <p class="text-gray-600 text-sm md:text-base">Kelola data pengurus FKKI</p>
               </div>
               <div class="flex flex-wrap gap-3">
                 <button 
                   onclick="exportToExcel(${JSON.stringify(pengurusData).replace(/"/g, '&quot;')}, 'data-pengurus')"
-                  class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition font-medium"
+                  class="px-3 md:px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition font-medium text-sm"
                 >
-                  📥 Export Excel
+                  📥 <span class="hidden sm:inline">Export</span>
                 </button>
                 ${canEdit ? `
                   <button 
                     onclick="openModal('pengurus', 'add')"
-                    class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium"
+                    class="px-3 md:px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium text-sm"
                   >
-                    ➕ Tambah Data
+                    ➕ <span class="hidden sm:inline">Tambah</span>
                   </button>
                 ` : ''}
               </div>
@@ -972,10 +1319,10 @@
               <table class="w-full min-w-full">
                 <thead class="bg-gray-50">
                   <tr>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">ID</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Email</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Role</th>
-                    ${canEdit ? '<th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Aksi</th>' : ''}
+                    <th class="px-3 md:px-4 py-2 md:py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">ID</th>
+                    <th class="px-3 md:px-4 py-2 md:py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Email</th>
+                    <th class="px-3 md:px-4 py-2 md:py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Role</th>
+                    ${canEdit ? '<th class="px-3 md:px-4 py-2 md:py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Aksi</th>' : ''}
                   </tr>
                 </thead>
                 <tbody id="pengurusTableBody" class="bg-white divide-y divide-gray-200">
@@ -1009,27 +1356,27 @@
 
       return paginatedData.map(item => `
         <tr class="hover:bg-gray-50 transition">
-          <td class="px-4 py-3 text-sm text-gray-800">${item.id_login}</td>
-          <td class="px-4 py-3 text-sm text-gray-800">${item.email}</td>
-          <td class="px-4 py-3">
-            <span class="px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+          <td class="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-800">${item.id_login}</td>
+          <td class="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-800">${item.email}</td>
+          <td class="px-3 md:px-4 py-2 md:py-3">
+            <span class="px-2 md:px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
               ${item.role}
             </span>
           </td>
           ${canEdit ? `
-            <td class="px-4 py-3 text-sm">
+            <td class="px-3 md:px-4 py-2 md:py-3 text-sm">
               <div class="flex gap-2">
                 <button 
                   onclick="openModal('pengurus', 'edit', ${item.id_login})"
-                  class="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition"
+                  class="px-2 md:px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition text-xs"
                 >
-                  ✏️ Edit
+                  ✏️
                 </button>
                 <button 
                   onclick="deleteData('pengurus', ${item.id_login})"
-                  class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition"
+                  class="px-2 md:px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition text-xs"
                 >
-                  🗑️ Hapus
+                  🗑️
                 </button>
               </div>
             </td>
@@ -1046,18 +1393,18 @@
       const adminData = loginData.filter(u => u.role === 'admin');
       
       return `
-        <div class="p-6 page-transition pb-24 md:pb-8">
-          <div class="bg-white rounded-xl shadow-md p-6">
+        <div class="p-4 md:p-6 page-transition pb-24 md:pb-8">
+          <div class="bg-white rounded-xl shadow-md p-4 md:p-6">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
               <div>
-                <h2 class="text-2xl font-bold text-gray-800">Data Admin</h2>
-                <p class="text-gray-600">Daftar administrator sistem</p>
+                <h2 class="text-xl md:text-2xl font-bold text-gray-800">Data Admin</h2>
+                <p class="text-gray-600 text-sm md:text-base">Daftar administrator sistem</p>
               </div>
               <button 
                 onclick="exportToExcel(${JSON.stringify(adminData).replace(/"/g, '&quot;')}, 'data-admin')"
-                class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition font-medium"
+                class="px-3 md:px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition font-medium text-sm"
               >
-                📥 Export Excel
+                📥 <span class="hidden sm:inline">Export Excel</span>
               </button>
             </div>
 
@@ -1065,18 +1412,18 @@
               <table class="w-full">
                 <thead class="bg-gray-50">
                   <tr>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">ID</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Email</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Role</th>
+                    <th class="px-3 md:px-4 py-2 md:py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">ID</th>
+                    <th class="px-3 md:px-4 py-2 md:py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Email</th>
+                    <th class="px-3 md:px-4 py-2 md:py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Role</th>
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                   ${adminData.map(item => `
                     <tr class="hover:bg-gray-50 transition">
-                      <td class="px-4 py-3 text-sm text-gray-800">${item.id_login}</td>
-                      <td class="px-4 py-3 text-sm text-gray-800">${item.email}</td>
-                      <td class="px-4 py-3">
-                        <span class="px-3 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
+                      <td class="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-800">${item.id_login}</td>
+                      <td class="px-3 md:px-4 py-2 md:py-3 text-sm text-gray-800">${item.email}</td>
+                      <td class="px-3 md:px-4 py-2 md:py-3">
+                        <span class="px-2 md:px-3 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
                           ${item.role}
                         </span>
                       </td>
@@ -1459,7 +1806,7 @@
         pages.push(`
           <button 
             onclick="goToPage('${type}', ${i})"
-            class="px-4 py-2 ${i === currentPageNum ? 'bg-purple-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'} border border-gray-300 rounded-lg transition font-medium"
+            class="px-3 md:px-4 py-2 ${i === currentPageNum ? 'bg-purple-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'} border border-gray-300 rounded-lg transition font-medium text-sm"
           >
             ${i}
           </button>
@@ -1533,23 +1880,12 @@
       }
     }
 
-    function handleLogout() {
-      localStorage.removeItem('fkki_user');
-      showToast('Anda telah keluar dari sistem');
-      
-      setTimeout(() => {
-        // Re-login otomatis sebagai admin
-        currentUser = {
-          id_login: 1,
-          email: "admin@fkki.com",
-          role: "admin",
-          koordinator: null
-        };
-        localStorage.setItem('fkki_user', JSON.stringify(currentUser));
-        currentPage = 'dashboard';
-        renderApp();
-      }, 1500);
-    }
+            function handleLogout() {
+            fetch("logout.php")
+                .then(() => {
+                window.location.href = "index.html";
+                });
+            }
 
     function renderBottomNav() {
       const menuItems = [
@@ -1671,5 +2007,5 @@
     checkLoginStatus();
     renderApp();
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9b2c0516e38d821f',t:'MTc2NjUzNjUzOS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9b2ea70d55873dce',t:'MTc2NjU2NDE0NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
